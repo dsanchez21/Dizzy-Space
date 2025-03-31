@@ -3,35 +3,48 @@ using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
-    PlayerInput m_PlayerInput = null;
+    public float moveSpeed = 5f; // Velocidad de movimiento del personaje
+    private Vector2 moveInput;  // Almacena la entrada de movimiento
+    private Rigidbody rb;
 
-    Vector3 m_Accelerometer = Vector3.zero;
-    Vector3 m_Gyroscope = Vector3.zero;
+    private Vector3 accelerometerInput; // Entrada del acelerómetro
 
     void Awake()
     {
+        rb = GetComponent<Rigidbody>();
+
+        // Habilitar el acelerómetro si está disponible
         if (UnityEngine.InputSystem.Accelerometer.current != null)
         {
             InputSystem.EnableDevice(UnityEngine.InputSystem.Accelerometer.current);
         }
-
-        if (UnityEngine.InputSystem.Gyroscope.current != null)
-        {
-            InputSystem.EnableDevice(UnityEngine.InputSystem.Gyroscope.current);
-        }
-
-        m_PlayerInput = GetComponent<PlayerInput>();
     }
 
-    void Update()
+    void FixedUpdate()
     {
+        // Calcular el movimiento desde el teclado o el acelerómetro
+        Vector3 movement = Vector3.zero;
+
         if (UnityEngine.InputSystem.Accelerometer.current != null)
         {
-            m_Accelerometer = UnityEngine.InputSystem.Accelerometer.current.acceleration.ReadValue();
+            // Leer los datos del acelerómetro
+            accelerometerInput = UnityEngine.InputSystem.Accelerometer.current.acceleration.ReadValue();
+            movement = new Vector3(accelerometerInput.x, 0, accelerometerInput.y) * moveSpeed * Time.fixedDeltaTime;
         }
-        if (UnityEngine.InputSystem.Gyroscope.current != null)
+        else
         {
-            m_Gyroscope = UnityEngine.InputSystem.Gyroscope.current.angularVelocity.ReadValue();
+            // Usar la entrada del teclado si no hay acelerómetro
+            movement = new Vector3(moveInput.x, 0, moveInput.y) * moveSpeed * Time.fixedDeltaTime;
         }
-    } 
+
+        // Mover el objeto directamente sin rotarlo
+        rb.MovePosition(rb.position + movement);
+    }
+
+    // Método llamado por el Input System cuando se detecta movimiento del teclado
+    public void OnMove(InputValue value)
+    {
+        // Leer la entrada del movimiento desde el teclado
+        moveInput = value.Get<Vector2>();
+    }
 }
