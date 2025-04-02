@@ -12,6 +12,11 @@ public class CameraController : MonoBehaviour
     public float m_zoomSpeed = 0.5f; // Velocidad de zoom con dos dedos
     public float m_touchRotationSpeed = 0.2f; // Velocidad de rotación con dos dedos
 
+    [Header("Gamepad Controls")]
+    public float m_gamepadMoveSpeed = 10f; // Velocidad de movimiento con el mando
+    public float m_gamepadRotationSpeed = 100f; // Velocidad de rotación con los gatillos
+    public float m_gamepadZoomSpeed = 10f; // Velocidad de zoom con el joystick derecho
+
     [Header("Movement Limits")]
     public Vector3 m_minLimits = new Vector3(-50f, 5f, -50f); // Límites mínimos en X, Y, Z
     public Vector3 m_maxLimits = new Vector3(50f, 20f, 50f);  // Límites máximos en X, Y, Z
@@ -31,6 +36,10 @@ public class CameraController : MonoBehaviour
         {
             HandlePCControls();
         }
+        else if (Input.GetJoystickNames().Length > 0) // Detectar si hay un mando conectado
+        {
+            HandleGamepadControls();
+        }
         else
         {
             HandleMobileControls();
@@ -42,29 +51,25 @@ public class CameraController : MonoBehaviour
 
     void HandlePCControls()
     {
-        // Movimiento con WASD relativo a la orientación completa de la cámara
+        // Movimiento con WASD
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
 
-        // Obtener las direcciones de la cámara
-        Vector3 forward = transform.forward; // Dirección hacia adelante de la cámara
-        Vector3 right = transform.right;    // Dirección hacia la derecha de la cámara
+        Vector3 forward = transform.forward;
+        Vector3 right = transform.right;
 
-        // Calcular el movimiento relativo a la cámara, incluyendo el eje Y
         Vector3 move = (forward * moveZ + right * moveX) * m_moveSpeed * Time.deltaTime;
         transform.Translate(move, Space.World);
 
-        // Rotación con el mouse
-        if (Input.GetMouseButton(1)) // Botón derecho del mouse
+        // Rotación con el ratón
+        if (Input.GetMouseButton(1)) // Botón derecho del ratón
         {
             float rotationY = Input.GetAxis("Mouse X") * m_rotationSpeed * Time.deltaTime;
             float rotationX = -Input.GetAxis("Mouse Y") * m_rotationSpeed * Time.deltaTime;
 
-            // Acumular las rotaciones en los ejes X e Y
-            m_rotationX = Mathf.Clamp(m_rotationX + rotationX, -80f, 80f); // Limitar la rotación vertical
+            m_rotationX = Mathf.Clamp(m_rotationX + rotationX, -80f, 80f);
             m_rotationY += rotationY;
 
-            // Aplicar las rotaciones acumuladas
             transform.rotation = Quaternion.Euler(m_rotationX, m_rotationY, 0f);
         }
 
@@ -76,18 +81,46 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    void HandleGamepadControls()
+    {
+        // Movimiento con el joystick izquierdo
+        float moveX = Input.GetAxis("GamepadHorizontal");
+        float moveZ = Input.GetAxis("GamepadVertical");
+
+        Vector3 forward = transform.forward;
+        Vector3 right = transform.right;
+
+        Vector3 move = (forward * moveZ + right * moveX) * m_gamepadMoveSpeed * Time.deltaTime;
+        transform.Translate(move, Space.World);
+
+        // Rotación con los gatillos
+        float rotationY = Input.GetAxis("GamepadRightTrigger") * m_gamepadRotationSpeed * Time.deltaTime;
+        float rotationX = -Input.GetAxis("GamepadLeftTrigger") * m_gamepadRotationSpeed * Time.deltaTime;
+
+        m_rotationX = Mathf.Clamp(m_rotationX + rotationX, -80f, 80f);
+        m_rotationY += rotationY;
+
+        transform.rotation = Quaternion.Euler(m_rotationX, m_rotationY, 0f);
+
+        // Zoom con el joystick derecho
+        float zoom = Input.GetAxis("GamepadZoom");
+        if (zoom != 0)
+        {
+            m_camera.fieldOfView = Mathf.Clamp(m_camera.fieldOfView - zoom * m_gamepadZoomSpeed * Time.deltaTime, 20f, 100f);
+        }
+    }
+
     void HandleMobileControls()
     {
         if (Input.touchCount == 1)
         {
-            // Movimiento con un dedo relativo a la orientación de la cámara
+            // Movimiento con un dedo
             Touch touch = Input.GetTouch(0);
             if (touch.phase == TouchPhase.Moved)
             {
                 Vector3 forward = transform.forward;
                 Vector3 right = transform.right;
 
-                // Calcular el movimiento relativo a la cámara
                 Vector3 delta = (forward * -touch.deltaPosition.y + right * -touch.deltaPosition.x) * m_touchMoveSpeed * Time.deltaTime;
                 transform.Translate(delta, Space.World);
             }
@@ -97,7 +130,7 @@ public class CameraController : MonoBehaviour
             Touch touch0 = Input.GetTouch(0);
             Touch touch1 = Input.GetTouch(1);
 
-            // Zoom con dos dedos (pellizcar)
+            // Zoom con dos dedos
             if (touch0.phase == TouchPhase.Moved || touch1.phase == TouchPhase.Moved)
             {
                 float prevDistance = (touch0.position - touch0.deltaPosition).magnitude - (touch1.position - touch1.deltaPosition).magnitude;
@@ -107,7 +140,7 @@ public class CameraController : MonoBehaviour
                 m_camera.fieldOfView = Mathf.Clamp(m_camera.fieldOfView - zoomDelta, 20f, 100f);
             }
 
-            // Rotación con dos dedos (uno fijo y otro en movimiento)
+            // Rotación con dos dedos
             if (touch0.phase == TouchPhase.Moved && touch1.phase == TouchPhase.Stationary)
             {
                 float rotationDelta = touch0.deltaPosition.x * m_touchRotationSpeed * Time.deltaTime;
